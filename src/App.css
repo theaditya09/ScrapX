@@ -1,0 +1,92 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #10b981aa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #14b8a6aa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.read-the-docs {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Additional styles to match the site theme */
+.bg-gradient-primary {
+  background-image: linear-gradient(to right, #10b981, #059669);
+}
+
+.text-gradient-primary {
+  background-image: linear-gradient(to right, #10b981, #059669);
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-gradient-secondary {
+  background-image: linear-gradient(to right, #14b8a6, #0d9488);
+}
+
+.btn-primary {
+  background-image: linear-gradient(to right, #10b981, #059669);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-image: linear-gradient(to right, #059669, #047857);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 1px solid #10b981;
+  color: #10b981;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  background-color: #f0fdf4;
+  color: #059669;
+}
