@@ -46,7 +46,6 @@ import RequestListingDialog from "@/components/listing/RequestListingDialog";
 import NegotiationDialog from "@/components/listing/NegotiationDialog";
 import NegotiationsManager from "@/components/listing/NegotiationsManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DEFAULT_SCRAP_IMAGE } from '@/components/listing/ImageUploader';
 
 interface Profile {
   id: string;
@@ -385,7 +384,7 @@ const PickupRequest = () => {
                     onError={(e) => {
                       console.error("Failed to load listing image:", listing.image_url);
                       const target = e.target as HTMLImageElement;
-                      target.src = DEFAULT_SCRAP_IMAGE;
+                      target.src = "https://placehold.co/400x300/e2e8f0/1e293b?text=Image+Load+Error";
                     }}
                   />
                 ) : (

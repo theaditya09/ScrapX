@@ -23,36 +23,25 @@ import {
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
-import { DEFAULT_SCRAP_IMAGE } from "@/components/listing/ImageUploader";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import RecyclabilityStats from "@/components/listing/RecyclabilityStats";
+import ListingRecyclabilityBreakdown from "@/components/listing/ListingRecyclabilityBreakdown";
+import EnvironmentalImpactStats from "@/components/listing/EnvironmentalImpactStats";
 import WalletConnectDialog from "@/components/wallet/WalletConnectDialog";
+import { Database } from "@/lib/database.types";
 
+// Define types directly in this file to avoid import errors
 interface MaterialType {
   id: string;
   name: string;
   category: string;
+  description?: string | null;
 }
 
-interface ScrapListing {
-  id: string;
-  title: string;
-  description: string | null;
-  material_type_id: string;
-  quantity: number;
-  unit: string;
-  listed_price: number;
-  address: string | null;
-  image_url: string | null;
-  geolocation: any;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  seller_id: string;
-  material_type?: {
-    id: string;
-    name: string;
-    category: string;
-  } | null;
-}
+type ScrapListing = Database["public"]["Tables"]["scrap_listings"]["Row"] & {
+  material_type?: MaterialType | null;
+};
 
 const Listings = () => {
   const { user } = useAuth();
@@ -65,7 +54,6 @@ const Listings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showWalletDialog, setShowWalletDialog] = useState(false);
-  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
   
   const fetchData = async () => {
     try {
@@ -234,18 +222,11 @@ const Listings = () => {
   
   // Handle marking a listing as sold
   const handleMarkAsSold = async (id: string) => {
-    setSelectedListingId(id);
-    setShowWalletDialog(true);
-  };
-  
-  const handleWalletSuccess = async () => {
-    if (!selectedListingId) return;
-    
     try {
       const { error } = await supabase
         .from('scrap_listings')
         .update({ status: 'sold' })
-        .eq('id', selectedListingId)
+        .eq('id', id)
         .eq('seller_id', user?.id);
       
       if (error) throw error;
@@ -253,13 +234,13 @@ const Listings = () => {
       // Update local state
       setListings(
         listings.map(listing => 
-          listing.id === selectedListingId ? { ...listing, status: 'sold' } : listing
+          listing.id === id ? { ...listing, status: 'sold' } : listing
         )
       );
       
       toast({
         title: "Success",
-        description: "Listing has been marked as sold and you've received your reward!",
+        description: "Listing has been marked as sold",
       });
     } catch (error) {
       console.error("Error marking listing as sold:", error);
@@ -269,6 +250,12 @@ const Listings = () => {
         variant: "destructive",
       });
     }
+  };
+  
+  const handleWalletSuccess = () => {
+    // Handle wallet connection success
+    console.log("Wallet connection successful");
+    fetchData();
   };
   
   return (
@@ -312,21 +299,34 @@ const Listings = () => {
         </div>
       </motion.div>
       
+      {/* Add stats components below navbar */}
+      {!loading && listings.length > 0 && (
+        <div className="space-y-6 mb-8">
+          <div className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
+            <RecyclabilityStats listings={listings} />
+          </div>
+          
+          <div className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
+            <EnvironmentalImpactStats listings={listings} />
+          </div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
-          <Card className="shadow-md border-none overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-lg border-b border-emerald-100">
+          <Card className="shadow-md border-none overflow-hidden mb-6">
+            <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-t-lg border-b border-emerald-100">
               <CardTitle className="text-xl text-emerald-700 flex items-center gap-2">
                 <Filter className="h-5 w-5" />
                 Filters
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
-              {/* Material Types Filter */}
+            <CardContent className="pt-4">
               <div className="space-y-4">
+                {/* Material Types Filter */}
                 <div>
                   <h3 className="font-medium text-emerald-800 mb-3">Material Type</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
                     {materialTypes.map(type => (
                       <div key={type.id} className="flex items-center">
                         <button
@@ -341,11 +341,7 @@ const Listings = () => {
                             selectedMaterialTypes.includes(type.id) 
                               ? 'bg-emerald-500' 
                               : 'border border-gray-400'
-                          }`}>
-                            {selectedMaterialTypes.includes(type.id) && (
-                              <Check className="h-3 w-3 text-white" />
-                            )}
-                          </div>
+                          }`} />
                           <span>{type.name}</span>
                         </button>
                       </div>
@@ -356,7 +352,7 @@ const Listings = () => {
                 {/* Categories Filter */}
                 <div className="border-t border-gray-100 pt-4">
                   <h3 className="font-medium text-emerald-800 mb-3">Categories</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
                     {categories.map(category => (
                       <div key={category} className="flex items-center">
                         <button
@@ -371,11 +367,7 @@ const Listings = () => {
                             selectedCategories.includes(category) 
                               ? 'bg-emerald-500' 
                               : 'border border-gray-400'
-                          }`}>
-                            {selectedCategories.includes(category) && (
-                              <Check className="h-3 w-3 text-white" />
-                            )}
-                          </div>
+                          }`} />
                           <span>{category}</span>
                         </button>
                       </div>
@@ -403,59 +395,27 @@ const Listings = () => {
         </div>
         
         <div className="lg:col-span-3">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
-              <h3 className="font-medium flex items-center">
-                <AlertCircle className="h-4 w-4 mr-2" />
-                Error Loading Listings
-              </h3>
-              <p className="mt-1 text-sm">{error}</p>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="mt-2 text-red-700 border-red-200 hover:bg-red-50"
-                onClick={fetchData}
-              >
-                Try Again
-              </Button>
-            </div>
-          )}
-          
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="text-center">
-                <RefreshCw className="h-8 w-8 animate-spin mx-auto text-emerald-500" />
-                <p className="mt-4 text-emerald-600">Loading listings...</p>
-              </div>
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin h-8 w-8 border-4 border-teal-500 border-t-transparent rounded-full"></div>
+              <span className="ml-3 text-gray-500">Loading listings...</span>
             </div>
           ) : filteredListings.length === 0 ? (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-              <Package className="h-12 w-12 mx-auto text-emerald-400 mb-4" />
-              <h3 className="text-lg font-medium text-emerald-800">No Listings Found</h3>
-              <p className="text-emerald-600/70 mt-2">
-                {selectedMaterialTypes.length > 0 || selectedCategories.length > 0 
-                  ? "Try changing your filter criteria" 
-                  : "There are no listings available at the moment."
+            <div className="text-center py-20">
+              <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No Listings Found</h3>
+              <p className="text-gray-500 max-w-md mx-auto mb-6">
+                {selectedMaterialTypes.length > 0 || selectedCategories.length > 0
+                  ? "No listings match your current filters. Try adjusting your filter criteria."
+                  : "There are no listings available at the moment. Check back later or create your own listing."
                 }
               </p>
-              {(selectedMaterialTypes.length > 0 || selectedCategories.length > 0) && (
-                <Button 
-                  variant="link" 
-                  onClick={clearFilters}
-                  className="mt-2 text-emerald-600"
-                >
-                  Clear Filters
-                </Button>
-              )}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-emerald-600 mb-2">Want to sell your scrap?</p>
+              <Button asChild>
                 <Link to="/create-listing">
-                  <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-none">
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Create a New Listing
-                  </Button>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Create Listing
                 </Link>
-              </div>
+              </Button>
             </div>
           ) : (
             <motion.div 
@@ -467,94 +427,112 @@ const Listings = () => {
               {filteredListings.map((listing) => (
                 <motion.div key={listing.id} variants={itemVariants}>
                   <Card className="h-full flex flex-col overflow-hidden hover:shadow-lg transition-shadow border-none shadow-md">
-                    <div className="h-48 overflow-hidden bg-gray-100 relative">
+                    <div className="relative h-48 bg-gray-100">
                       {listing.image_url ? (
                         <img 
                           src={listing.image_url}
-                          alt={listing.title}
-                          className="w-full h-full object-cover"
+                          alt={listing.title} 
+                          className="h-48 w-full object-cover rounded-t-md"
                           onError={(e) => {
                             console.error("Failed to load listing image:", listing.image_url);
                             const target = e.target as HTMLImageElement;
-                            target.src = DEFAULT_SCRAP_IMAGE;
+                            target.src = "https://placehold.co/400x300/e2e8f0/1e293b?text=Image+Load+Error";
                           }}
                         />
                       ) : (
-                        <div className="flex items-center justify-center h-full bg-gray-100">
+                        <div className="h-48 w-full flex flex-col items-center justify-center bg-gray-100">
                           <Package className="h-16 w-16 text-gray-300" />
+                          <p className="text-gray-400 mt-2">No image</p>
                         </div>
                       )}
-                      <Badge 
-                        className={`absolute top-2 right-2 ${
-                          listing.status === 'active' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 border-none' :
-                          listing.status === 'sold' ? 'bg-gradient-to-r from-blue-500 to-blue-600 border-none' : 
-                          'bg-gradient-to-r from-yellow-500 to-yellow-600 border-none'
-                        }`}
-                      >
-                        {listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
-                      </Badge>
+                      
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                        <div className="flex justify-between items-center">
+                          <Badge className="bg-teal-500 hover:bg-teal-600">
+                            {listing.material_type?.name || "Unknown"}
+                          </Badge>
+                          <Badge variant="outline" className="bg-white">
+                            {listing.material_type?.category || "Uncategorized"}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      <div className="absolute top-3 right-3">
+                        <Badge className="text-lg font-semibold px-3 py-1 bg-white text-teal-700 border border-teal-200 shadow-sm">
+                          ₹{listing.listed_price}/{listing.unit}
+                        </Badge>
+                      </div>
                     </div>
                     
-                    <CardHeader className="pb-2 pt-4">
-                      <CardTitle className="text-lg line-clamp-1 text-emerald-800">{listing.title}</CardTitle>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="line-clamp-1 text-lg">{listing.title}</CardTitle>
                     </CardHeader>
                     
                     <CardContent className="pb-4 flex-1">
-                      <div className="flex items-center text-emerald-600/70 text-sm mb-2">
-                        <Package className="h-4 w-4 mr-2 text-emerald-500" />
-                        <span>
-                          {listing.material_type?.name || "Unknown Material"}
-                        </span>
+                      <p className="text-gray-500 text-sm line-clamp-2 min-h-[40px]">
+                        {listing.description || "No description provided."}
+                      </p>
+                      <div className="mt-4 flex items-center gap-4">
+                        <div>
+                          <span className="text-lg font-bold text-teal-600">₹{listing.listed_price}</span>
+                          <span className="text-gray-500 text-xs ml-1">per {listing.unit}</span>
+                        </div>
+                        <Badge className="bg-teal-100 text-teal-800 hover:bg-teal-200">
+                          {listing.quantity} {listing.unit}
+                        </Badge>
                       </div>
                       
-                      <div className="flex items-center text-emerald-600/70 text-sm mb-2">
-                        <MapPin className="h-4 w-4 mr-2 text-emerald-500" />
-                        <span className="line-clamp-1">
-                          {listing.address || "Location not specified"}
-                        </span>
+                      <div className="mt-4">
+                        <ListingRecyclabilityBreakdown listing={listing} />
                       </div>
-                      
-                      <div className="flex items-center text-emerald-600/70 text-sm mb-2">
-                        <Calendar className="h-4 w-4 mr-2 text-emerald-500" />
-                        <span>
-                          {new Date(listing.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      
-                      <div className="mt-3 text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                        ₹{listing.listed_price}/{listing.unit}
-                      </div>
-                      <div className="text-sm text-emerald-600/70">
-                        Quantity: {listing.quantity} {listing.unit}
+
+                      <div className="flex mt-3 text-sm text-gray-500">
+                        <div className="flex items-center mr-4">
+                          <Package className="h-4 w-4 mr-1" />
+                          <span>{listing.quantity} {listing.unit}</span>
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          <span>{new Date(listing.created_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
                     </CardContent>
                     
                     <CardFooter className="pt-0 pb-4">
-                      <div className="flex items-center gap-2 w-full">
-                        <Link to={`/listings/${listing.id}`} className="flex-1">
-                          <Button variant="outline" className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800">
+                      <div className="w-full grid grid-cols-2 gap-2">
+                        <Button variant="outline" asChild>
+                          <Link to={`/pickup/${listing.id}`}>
                             <Eye className="h-4 w-4 mr-2" />
-                            View
-                          </Button>
-                        </Link>
+                            View Details
+                          </Link>
+                        </Button>
                         
-                        {user && listing.status === 'active' && listing.seller_id !== user.id && (
-                          <Link to={`/listings/${listing.id}`} className="flex-1">
-                            <Button className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-none">
+                        {user && listing.seller_id === user.id ? (
+                          // Show edit and mark as sold buttons for user's own listings
+                          listing.status === 'active' ? (
+                            <Button 
+                              onClick={() => handleMarkAsSold(listing.id)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Check className="h-4 w-4 mr-2" />
+                              Mark as Sold
+                            </Button>
+                          ) : (
+                            <Button asChild variant="secondary">
+                              <Link to={`/edit-listing/${listing.id}`}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit Listing
+                              </Link>
+                            </Button>
+                          )
+                        ) : (
+                          // Show buy button for listings that aren't user's own
+                          <Button asChild>
+                            <Link to={`/pickup/${listing.id}`}>
                               <ShoppingCart className="h-4 w-4 mr-2" />
                               Buy
-                            </Button>
-                          </Link>
-                        )}
-                        
-                        {user && listing.seller_id === user.id && listing.status === 'active' && (
-                          <Button 
-                            variant="default" 
-                            className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-none"
-                            onClick={() => handleMarkAsSold(listing.id)}
-                          >
-                            <Check className="h-4 w-4 mr-2" />
-                            Mark Sold
+                            </Link>
                           </Button>
                         )}
                       </div>

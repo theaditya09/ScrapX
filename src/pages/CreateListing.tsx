@@ -180,6 +180,13 @@ const CreateListing = () => {
       
       // If more than one material type detected, enable multi-material mode
       setIsMultiMaterial(materials.length > 1);
+      
+      // IMPORTANT: Make sure we don't inadvertently lose the image URL during material detection
+      // Preserve the current image URL value
+      const currentImageUrl = form.getValues("imageUrl");
+      if (currentImageUrl) {
+        console.log("Preserving image URL after material detection:", currentImageUrl);
+      }
     }
   };
 

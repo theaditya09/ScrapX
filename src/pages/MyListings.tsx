@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Package, Clock, IndianRupee, Trash, Edit, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 import WalletConnectDialog from "@/components/wallet/WalletConnectDialog";
-import { DEFAULT_SCRAP_IMAGE } from "@/components/listing/ImageUploader";
 
 interface ListingRequest {
   id: string;
@@ -275,7 +274,7 @@ const MyListings = () => {
                           onError={(e) => {
                             console.error("Failed to load listing image:", listing.image_url);
                             const target = e.target as HTMLImageElement;
-                            target.src = DEFAULT_SCRAP_IMAGE;
+                            target.src = "https://placehold.co/400x300/e2e8f0/1e293b?text=Image+Load+Error";
                           }}
                         />
                       ) : (

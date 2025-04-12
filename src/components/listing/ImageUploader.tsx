@@ -13,9 +13,6 @@ interface ImageUploaderProps {
   forML?: boolean; // Flag to indicate if this upload is for ML processing
 }
 
-// Add a default fallback image for listings that don't have images
-export const DEFAULT_SCRAP_IMAGE = "https://res.cloudinary.com/ddm7aksef/image/upload/v1744382728/WhatsApp_Image_2025-04-11_at_19.27.03_419fe003_dwgak4.jpg";
-
 const ImageUploader = ({ initialImage, onImageSelected, forML = false }: ImageUploaderProps) => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(initialImage || null);
   const [uploading, setUploading] = useState(false);

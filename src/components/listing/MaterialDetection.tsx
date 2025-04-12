@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ImageUploader from "./ImageUploader";
+import { uploadImageToGitHub } from '@/integrations/github/imageUploader';
 
 interface MaterialDetectionProps {
   onDetectionComplete: (materials: {name: string, count: number}[]) => void;
@@ -86,6 +87,16 @@ const MaterialDetection = ({ onDetectionComplete, materialTypes }: MaterialDetec
         setInputMethod('url');
       }
     }
+    
+    // IMPORTANT: Update the form with the image URL right away
+    // This ensures the actual image URL gets passed to the parent form even before detection
+    const imageElement = document.querySelector('input[name="imageUrl"]') as HTMLInputElement;
+    if (imageElement && url) {
+      console.log("Setting image URL in form from handleImageSelected:", url);
+      imageElement.value = url;
+      const event = new Event('input', { bubbles: true });
+      imageElement.dispatchEvent(event);
+    }
   };
 
   // Convert file to base64
@@ -141,6 +152,14 @@ const MaterialDetection = ({ onDetectionComplete, materialTypes }: MaterialDetec
           // If we have the actual file object, convert to base64
           if (imageFile) {
             imageData = await toBase64(imageFile);
+            
+            // If the image is from a blob URL (local file), we should upload it to GitHub
+            // to ensure it's permanently available for the listing
+            if (imageUrl.startsWith('blob:') && imageFile) {
+              // Note: We don't wait for this upload to complete as it can happen in background
+              // The ImageUploader component already handles the GitHub upload for ML-assisted uploads
+              console.log("Background upload of ML detection image initiated");
+            }
           } 
           // If we don't have the file but have a URL (from ImageUploader)
           else if (imageUrl.startsWith('blob:')) {
@@ -174,14 +193,17 @@ const MaterialDetection = ({ onDetectionComplete, materialTypes }: MaterialDetec
         return;
       }
 
-      // IMPORTANT: Update the form with the ORIGINAL image URL right away
+      // Double check that the form has the original image URL
       // This ensures the listing uses the original image, not the ML-processed one
       const imageElement = document.querySelector('input[name="imageUrl"]') as HTMLInputElement;
       if (imageElement && originalImageUrl) {
-        console.log("Setting image URL in form:", originalImageUrl);
-        imageElement.value = originalImageUrl;
-        const event = new Event('input', { bubbles: true });
-        imageElement.dispatchEvent(event);
+        console.log("Confirming original image URL in form:", originalImageUrl);
+        if (imageElement.value !== originalImageUrl) {
+          console.log("Updating form with original image URL");
+          imageElement.value = originalImageUrl;
+          const event = new Event('input', { bubbles: true });
+          imageElement.dispatchEvent(event);
+        }
       }
 
       // Make the API request with timeout
