@@ -137,17 +137,107 @@ const PickupRequest = () => {
       console.log("Fetching listing with ID:", id);
       setLoading(true);
 
-      const { data: listingData, error: listingError } = await supabase
-        .rpc('get_listing_coordinates', { listing_id: id })
-        .single();
+      // Try to use the RPC function first (if it exists)
+      let listingData: any = null;
+      let listingError: any = null;
 
-      if (listingError) throw listingError;
+      try {
+        const { data, error } = await supabase
+          .rpc('get_listing_coordinates', { listing_id: id });
+        
+        if (!error && data) {
+          // If RPC function exists and returns data, use it
+          listingData = data;
+        } else {
+          listingError = error;
+        }
+      } catch (rpcError: any) {
+        // If RPC function doesn't exist, fall back to regular query
+        console.log("RPC function not available, using regular query:", rpcError.message);
+        listingError = rpcError;
+      }
+
+      // If RPC didn't work, use a regular query
+      if (!listingData) {
+        const { data: queryData, error: queryError } = await supabase
+          .from('scrap_listings')
+          .select(`
+            *,
+            material_type:material_type_id (
+              id,
+              name,
+              category,
+              description
+            ),
+            profiles:seller_id (
+              id,
+              full_name,
+              avatar_url
+            ),
+            ngo:ngo_id (
+              id,
+              name,
+              description
+            )
+          `)
+          .eq('id', id)
+          .single();
+
+        if (queryError) throw queryError;
+        if (!queryData) throw new Error('Listing not found');
+
+        listingData = queryData;
+        
+        // Try to extract coordinates from geolocation
+        // Note: PostGIS types may not be directly accessible via Supabase queries
+        // You may need to run the migration to create the get_listing_coordinates function
+        if (listingData.geolocation) {
+          try {
+            if (typeof listingData.geolocation === 'object' && listingData.geolocation !== null) {
+              const geo = listingData.geolocation as any;
+              if (geo.coordinates && Array.isArray(geo.coordinates) && geo.coordinates.length >= 2) {
+                // GeoJSON format: [longitude, latitude]
+                listingData.longitude = geo.coordinates[0];
+                listingData.latitude = geo.coordinates[1];
+              } else if (geo.lng !== undefined && geo.lat !== undefined) {
+                listingData.longitude = geo.lng;
+                listingData.latitude = geo.lat;
+              }
+            } else if (typeof listingData.geolocation === 'string') {
+              try {
+                const geo = JSON.parse(listingData.geolocation);
+                if (geo.coordinates && Array.isArray(geo.coordinates)) {
+                  listingData.longitude = geo.coordinates[0];
+                  listingData.latitude = geo.coordinates[1];
+                } else if (geo.lng !== undefined && geo.lat !== undefined) {
+                  listingData.longitude = geo.lng;
+                  listingData.latitude = geo.lat;
+                }
+              } catch (parseError) {
+                console.warn("Could not parse geolocation string:", parseError);
+              }
+            }
+          } catch (e) {
+            console.warn("Could not extract coordinates from geolocation:", e);
+          }
+        }
+      }
+
       if (!listingData) throw new Error('Listing not found');
 
       console.log("Listing data:", listingData);
       
-      // Cast the data to our SupabaseScrapListing type
-      const typedListingData = listingData as SupabaseScrapListing;
+      // Build the listing object
+      const typedListingData: SupabaseScrapListing = {
+        ...listingData,
+        latitude: listingData.latitude,
+        longitude: listingData.longitude,
+        material_type: listingData.material_type || null,
+        profiles: listingData.profiles || null,
+        ngo: listingData.ngo || null,
+        is_donation: listingData.is_donation || false,
+      };
+      
       setListing(typedListingData);
       
       if (typedListingData.latitude && typedListingData.longitude) {

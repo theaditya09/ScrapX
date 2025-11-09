@@ -98,8 +98,7 @@ const RequestListingDialog = ({
           quantity_requested: requestedQuantity,
           price_offered: requestMode === 'buy' ? originalPrice : offeredPrice,
           message: message || null,
-          status: 'pending',
-          is_negotiation: requestMode === 'negotiate'
+          status: 'pending'
         });
       
       if (error) throw error;
